@@ -186,11 +186,11 @@ Common flags:
   -device      Device serial (or set QUOTE0_DEVICE)
 
 Text flags:
-  -title          Title (optional)
-  -message        Message (optional)
-  -signature      Signature (optional)
+  -title          Title displayed on the first line (optional)
+  -message        Message displayed on the next three lines (optional)
+  -signature      Signature displayed at bottom-right corner (optional)
   -auto-signature Use auto-generated signature (hostname@MM-DD HH:MM:SS) if -signature is empty
-  -icon           Base64 40x40 PNG icon (optional)
+  -icon           Base64 40x40 PNG icon displayed at bottom-left corner (optional)
   -icon-file      Path to 40x40 PNG icon (optional)
   -link           URL (optional)
   -refresh        true|false (default true)
@@ -205,6 +205,8 @@ Image flags:
   -refresh       true|false (default true)
 
 Notes:
+  - Text layout is fixed (296x152px): title on first line, message on next 3 lines, icon at bottom-left, signature at bottom-right.
+    Omitted fields leave blank areas; the layout does not reflow.
   - ditherType and ditherKernel are case-insensitive (values are upper-cased internally).
   - If ditherType is omitted, the server uses error diffusion with the Floyd-Steinberg kernel by default.
   - ditherKernel is only effective when ditherType is DIFFUSION. For ORDERED or NONE, the kernel parameter is ignored.

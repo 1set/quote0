@@ -94,11 +94,16 @@ TextRequest fields:
 
 - `RefreshNow` (optional bool pointer) - immediate refresh
 - `DeviceID` - filled automatically from default if omitted (required)
-- `Title` - optional; renders in the marquee (keep concise for the 296x152 canvas)
-- `Message` - optional body copy
-- `Signature` - optional footer text
-- `Icon` - optional base64 40x40 px PNG shown in the upper-left slot
+- `Title` - optional; displays on the first line
+- `Message` - optional; displays on the next three lines
+- `Signature` - optional; displays fixed at the bottom-right corner
+- `Icon` - optional base64 40x40 px PNG shown at the bottom-left corner
 - `Link` - optional URL opened via the Dot app
+
+**Display Layout:**
+The Quote/0 screen has a fixed layout for Text API mode. Title appears on the first line, followed by message text spanning three lines. Icon (if provided) appears at the bottom-left corner, and signature at the bottom-right. If any field is omitted, that area remains blank - the layout does not reflow or adjust responsively.
+
+**Note:** All fields except `DeviceID` are optional. You can send a text request with only `DeviceID` to refresh the display without changing content.
 
 ### Image API
 

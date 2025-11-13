@@ -7,18 +7,27 @@ import (
 
 // TextRequest matches the /api/open/text payload.
 // Only DeviceID is required; all other fields are optional.
+//
+// Display Layout:
+// The Quote/0 screen has a fixed layout (296x152 pixels):
+//   - Title: displays on the first line
+//   - Message: displays on the next three lines
+//   - Icon: 40x40px at the bottom-left corner
+//   - Signature: fixed at the bottom-right corner
+//
+// If any field is omitted, that area remains blank. The layout does not reflow or adjust responsively.
 type TextRequest struct {
 	// RefreshNow toggles an immediate refresh on the targeted Quote/0 display. Optional.
 	RefreshNow *bool `json:"refreshNow,omitempty"`
 	// DeviceID is the Quote/0 serial number (hexadecimal string). Required. Leave empty to use the client's default.
 	DeviceID string `json:"deviceId"`
-	// Title renders inside the marquee area; keep it concise for the 296x152 canvas. Optional.
+	// Title displays on the first line. Optional.
 	Title string `json:"title,omitempty"`
-	// Message contains the multiline body text presented under the title. Optional.
+	// Message displays on the next three lines. Optional.
 	Message string `json:"message,omitempty"`
-	// Signature appears near the footer (often a timestamp or author). Optional.
+	// Signature displays fixed at the bottom-right corner. Optional.
 	Signature string `json:"signature,omitempty"`
-	// Icon is an optional base64-encoded PNG for the 40x40px slot in the upper-left corner.
+	// Icon is a base64-encoded 40x40px PNG shown at the bottom-left corner. Optional.
 	Icon string `json:"icon,omitempty"`
 	// Link is an optional URL that the Quote/0 companion app can open when interacting with the device.
 	Link string `json:"link,omitempty"`
