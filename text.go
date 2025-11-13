@@ -6,16 +6,17 @@ import (
 )
 
 // TextRequest matches the /api/open/text payload.
+// Only DeviceID is required; all other fields are optional.
 type TextRequest struct {
-	// RefreshNow toggles an immediate refresh on the targeted Quote/0 display.
+	// RefreshNow toggles an immediate refresh on the targeted Quote/0 display. Optional.
 	RefreshNow *bool `json:"refreshNow,omitempty"`
-	// DeviceID is the Quote/0 serial number (hexadecimal string). Leave empty to use the client's default.
+	// DeviceID is the Quote/0 serial number (hexadecimal string). Required. Leave empty to use the client's default.
 	DeviceID string `json:"deviceId"`
-	// Title renders inside the marquee area; keep it concise for the 296x152 canvas.
+	// Title renders inside the marquee area; keep it concise for the 296x152 canvas. Optional.
 	Title string `json:"title,omitempty"`
-	// Message contains the multiline body text presented under the title.
+	// Message contains the multiline body text presented under the title. Optional.
 	Message string `json:"message,omitempty"`
-	// Signature appears near the footer (often a timestamp or author).
+	// Signature appears near the footer (often a timestamp or author). Optional.
 	Signature string `json:"signature,omitempty"`
 	// Icon is an optional base64-encoded PNG for the 40x40px slot in the upper-left corner.
 	Icon string `json:"icon,omitempty"`
@@ -26,12 +27,6 @@ type TextRequest struct {
 func (r TextRequest) validate() error {
 	if strings.TrimSpace(r.DeviceID) == "" {
 		return ErrDeviceIDMissing
-	}
-	if strings.TrimSpace(r.Title) == "" {
-		return ErrTitleMissing
-	}
-	if strings.TrimSpace(r.Message) == "" {
-		return ErrMessageMissing
 	}
 	return nil
 }
@@ -56,7 +51,7 @@ func (c *Client) SendTextToDevice(ctx context.Context, deviceID string, payload 
 }
 
 // SendTextSimple is a convenience helper using Background context and immediate refresh.
-// Signature is optional; when omitted, an empty string is sent to the server.
+// Title and message are optional. Signature is variadic; when omitted, no signature is sent.
 func (c *Client) SendTextSimple(title, message string, signature ...string) (*APIResponse, error) {
 	sig := ""
 	if len(signature) > 0 {

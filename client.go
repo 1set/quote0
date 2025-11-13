@@ -23,7 +23,7 @@ const (
 	imageEndpoint       = "/api/open/image"
 	userAgentProduct    = "quote0-go-sdk"
 	userAgentVersion    = "1.0"
-	defaultHTTPTimeout  = 15 * time.Second
+	defaultHTTPTimeout  = 30 * time.Second
 	maxResponseBodySize = 4 << 20 // 4 MiB guard
 )
 

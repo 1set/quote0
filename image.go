@@ -19,9 +19,13 @@ const (
 //
 // Server behavior (per official docs):
 // - If ditherType is omitted, the default is error diffusion using the Floyd-Steinberg kernel.
-// - You can disable dithering by selecting NONE.
-// - DIFFUSION supports a set of diffusion kernels (see DitherKernel).
-// - ORDERED applies an ordered/threshold-matrix halftoning pattern.
+// - DIFFUSION: Error diffusion algorithms that distribute quantization errors to neighbors.
+//   When using DIFFUSION, you can specify a DitherKernel to control the error distribution pattern.
+// - ORDERED: Fixed periodic threshold matrix producing uniform dot patterns with regular grids.
+// - NONE: Disables dithering entirely; recommended for text-based images for sharper rendering.
+//
+// Note: DitherKernel is only effective when DitherType is DIFFUSION. For ORDERED or NONE,
+// the kernel parameter is ignored by the server.
 type DitherType string
 
 const (
@@ -41,8 +45,11 @@ const (
 
 // DitherKernel enumerates supported dithering kernels/algorithms.
 //
-// When DitherType is DIFFUSION, these control how quantization error is spread:
-// - KernelFloydSteinberg: Classic 3x3 diffusion (7/16, 3/16, 5/16, 1/16). Balanced detail and smoothness.
+// IMPORTANT: DitherKernel is only effective when DitherType is set to DIFFUSION.
+// When DitherType is ORDERED or NONE, the kernel parameter is ignored by the server.
+//
+// When DitherType is DIFFUSION, these kernels control how quantization error is spread:
+// - KernelFloydSteinberg: Classic 3x3 diffusion (default). Balanced detail and smoothness.
 // - KernelAtkinson: Lighter diffusion footprint; preserves micro-detail and text; slightly lighter images.
 // - KernelBurkes: Row-oriented diffusion similar to Stucki but lighter weights; sharp edges, fine detail.
 // - KernelSierra2: Sierra-2 variant; smooth gradients with moderate grain; balanced look.
@@ -51,9 +58,7 @@ const (
 // - KernelDiffusionRow: Directional diffusion along rows; preserves horizontal detail; may create row texture.
 // - KernelDiffusionColumn: Directional diffusion along columns; preserves vertical detail; may create column texture.
 // - KernelDiffusion2D: More isotropic spread across 2D neighborhood; balances artifacts across directions.
-//
-// When DitherType is ORDERED, the following kernel is meaningful:
-// - KernelThreshold: Simple threshold matrix (ordered) without diffusion; produces a stable halftone pattern.
+// - KernelThreshold: Listed for completeness, but primarily used with ORDERED dither type.
 type DitherKernel string
 
 const (

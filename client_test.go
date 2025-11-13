@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSendText_SuccessJSON(t *testing.T) {
@@ -145,16 +146,27 @@ func TestSendImage_WithBytesAndPath(t *testing.T) {
 	}
 }
 
-func TestSendText_MissingTitleMessage(t *testing.T) {
-	c, err := NewClient("test", WithDefaultDeviceID("DEF"), WithRateLimiter(nil))
+func TestSendText_AllFieldsOptional(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"code":0}`)
+	}))
+	defer srv.Close()
+
+	c, err := NewClient("test", WithBaseURL(srv.URL), WithDefaultDeviceID("DEF"), WithRateLimiter(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := c.SendText(context.Background(), TextRequest{Message: "body"}); err != ErrTitleMissing {
-		t.Fatalf("expected ErrTitleMissing, got %v", err)
+	// All fields except DeviceID are optional
+	if _, err := c.SendText(context.Background(), TextRequest{Message: "body"}); err != nil {
+		t.Fatalf("SendText with only message should succeed: %v", err)
 	}
-	if _, err := c.SendText(context.Background(), TextRequest{Title: "t"}); err != ErrMessageMissing {
-		t.Fatalf("expected ErrMessageMissing, got %v", err)
+	if _, err := c.SendText(context.Background(), TextRequest{Title: "t"}); err != nil {
+		t.Fatalf("SendText with only title should succeed: %v", err)
+	}
+	// Empty text request (just refresh)
+	if _, err := c.SendText(context.Background(), TextRequest{}); err != nil {
+		t.Fatalf("SendText with no fields should succeed: %v", err)
 	}
 }
 
@@ -252,5 +264,77 @@ func TestBorderColor_Constants(t *testing.T) {
 	}
 	if BorderBlack != 1 {
 		t.Errorf("BorderBlack should be 1, got %d", BorderBlack)
+	}
+}
+
+func TestTextRequest_OmitEmptyFields(t *testing.T) {
+	// Verify that empty title and signature are omitted from JSON
+	var capturedBody []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		capturedBody, err = io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read body: %v", err)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, `{"code":0}`)
+	}))
+	defer srv.Close()
+
+	c, err := NewClient("test", WithBaseURL(srv.URL), WithDefaultDeviceID("DEF"), WithRateLimiter(nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Send request with no title or signature
+	_, err = c.SendText(context.Background(), TextRequest{
+		Message: "hello",
+	})
+	if err != nil {
+		t.Fatalf("SendText: %v", err)
+	}
+
+	// Parse the captured body
+	var body map[string]interface{}
+	if err := json.Unmarshal(capturedBody, &body); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+
+	// Verify that title and signature keys are NOT present
+	if _, exists := body["title"]; exists {
+		t.Error("empty title should be omitted from JSON")
+	}
+	if _, exists := body["signature"]; exists {
+		t.Error("empty signature should be omitted from JSON")
+	}
+	// Verify that message IS present
+	if _, exists := body["message"]; !exists {
+		t.Error("message should be present in JSON")
+	}
+	if msg, ok := body["message"].(string); !ok || msg != "hello" {
+		t.Errorf("expected message='hello', got %v", body["message"])
+	}
+}
+
+func TestRateLimiter_InvalidInterval(t *testing.T) {
+	// Test that NewFixedIntervalLimiter handles invalid (0 or negative) intervals
+	limiter := NewFixedIntervalLimiter(0)
+	if limiter == nil {
+		t.Fatal("NewFixedIntervalLimiter(0) should not return nil")
+	}
+
+	// Verify it still works (should default to 1 second)
+	ctx := context.Background()
+	if err := limiter.Wait(ctx); err != nil {
+		t.Fatalf("Wait should succeed even with 0 interval: %v", err)
+	}
+
+	// Test negative interval
+	limiter2 := NewFixedIntervalLimiter(-5 * time.Second)
+	if limiter2 == nil {
+		t.Fatal("NewFixedIntervalLimiter(-5s) should not return nil")
+	}
+	if err := limiter2.Wait(ctx); err != nil {
+		t.Fatalf("Wait should succeed with negative interval: %v", err)
 	}
 }
