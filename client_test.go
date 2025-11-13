@@ -35,7 +35,7 @@ func TestSendText_SuccessJSON(t *testing.T) {
 			t.Fatalf("device=%s", req.DeviceID)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"code":0,"message":"ok"}`)
+		_, _ = io.WriteString(w, `{"code":0,"message":"ok"}`)
 	}))
 	defer srv.Close()
 
@@ -52,7 +52,7 @@ func TestSendText_SuccessJSON(t *testing.T) {
 func TestSendText_PlainErrorChinese(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusTooManyRequests)
-		io.WriteString(w, "频率过高，请稍后再试")
+		_, _ = io.WriteString(w, "频率过高，请稍后再试")
 	}))
 	defer srv.Close()
 
@@ -73,10 +73,10 @@ func TestDefaultDeviceFallbackOverride(t *testing.T) {
 	got := make([]string, 0, 2)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req TextRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewDecoder(r.Body).Decode(&req)
 		got = append(got, req.DeviceID)
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"code":0}`)
+		_, _ = io.WriteString(w, `{"code":0}`)
 	}))
 	defer srv.Close()
 
@@ -108,7 +108,7 @@ func TestSendImage_WithBytesAndPath(t *testing.T) {
 		}
 		gotImages = append(gotImages, req.Image)
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"code":0}`)
+		_, _ = io.WriteString(w, `{"code":0}`)
 	}))
 	defer srv.Close()
 
@@ -149,7 +149,7 @@ func TestSendImage_WithBytesAndPath(t *testing.T) {
 func TestSendText_AllFieldsOptional(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"code":0}`)
+		_, _ = io.WriteString(w, `{"code":0}`)
 	}))
 	defer srv.Close()
 
@@ -184,10 +184,10 @@ func TestSendTextSimple_VariadicSignature(t *testing.T) {
 	sigs := make([]string, 0, 2)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req TextRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewDecoder(r.Body).Decode(&req)
 		sigs = append(sigs, req.Signature)
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"code":0}`)
+		_, _ = io.WriteString(w, `{"code":0}`)
 	}))
 	defer srv.Close()
 
@@ -238,7 +238,7 @@ func TestBorderColor_JSONSerialization(t *testing.T) {
 			t.Fatalf("expected BorderBlack (1), got %d", req.Border)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"code":0}`)
+		_, _ = io.WriteString(w, `{"code":0}`)
 	}))
 	defer srv.Close()
 
@@ -277,7 +277,7 @@ func TestTextRequest_OmitEmptyFields(t *testing.T) {
 			t.Fatalf("read body: %v", err)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		io.WriteString(w, `{"code":0}`)
+		_, _ = io.WriteString(w, `{"code":0}`)
 	}))
 	defer srv.Close()
 
