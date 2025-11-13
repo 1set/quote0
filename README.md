@@ -59,7 +59,7 @@ func main() {
     )
     if err != nil { log.Fatal(err) }
 
-    // Send text (Title and Message are required by this SDK)
+    // Send text (all fields are optional except DeviceID which can be set via client default)
     _, err = client.SendText(context.Background(), quote0.TextRequest{
         RefreshNow: quote0.Bool(true),
         Title:      "Status Update",
@@ -93,12 +93,17 @@ Client options:
 TextRequest fields:
 
 - `RefreshNow` (optional bool pointer) - immediate refresh
-- `DeviceID` - filled automatically from default if omitted
-- `Title` - required; renders in the marquee (keep concise for the 296x152 canvas)
-- `Message` - required body copy
-- `Signature` - optional footer text
-- `Icon` - optional base64 40x40 px PNG shown in the upper-left slot
+- `DeviceID` - filled automatically from default if omitted (required)
+- `Title` - optional; displays on the first line
+- `Message` - optional; displays on the next three lines
+- `Signature` - optional; displays fixed at the bottom-right corner
+- `Icon` - optional base64 40x40 px PNG shown at the bottom-left corner
 - `Link` - optional URL opened via the Dot app
+
+**Display Layout:**
+The Quote/0 screen has a fixed layout for Text API mode. Title appears on the first line, followed by message text spanning three lines. Icon (if provided) appears at the bottom-left corner, and signature at the bottom-right. If any field is omitted, that area remains blank - the layout does not reflow or adjust responsively.
+
+**Note:** All fields except `DeviceID` are optional. You can send a text request with only `DeviceID` to refresh the display without changing content.
 
 ### Image API
 
@@ -120,16 +125,20 @@ ImageRequest fields:
 - `Border` - optional screen edge color: `BorderWhite` (default) or `BorderBlack`
 - `DitherType`, `DitherKernel` - optional dithering parameters
 
-Note: If `ditherType` is omitted, the server defaults to error diffusion with the Floyd-Steinberg kernel (equivalent to `ditherType=DIFFUSION` + `ditherKernel=FLOYD_STEINBERG`). Supported values include:
+Note: If `ditherType` is omitted, the server defaults to error diffusion with the Floyd-Steinberg kernel (equivalent to `ditherType=DIFFUSION` + `ditherKernel=FLOYD_STEINBERG`).
+
+**Important:** `ditherKernel` is only effective when `ditherType=DIFFUSION`. When `ditherType` is `ORDERED` or `NONE`, the kernel parameter is ignored by the server.
+
+Supported values:
 
 - ditherType: `DIFFUSION` | `ORDERED` | `NONE`
-- ditherKernel: `FLOYD_STEINBERG` | `ATKINSON` | `BURKES` | `SIERRA2` | `STUCKI` | `JARVIS_JUDICE_NINKE` | `DIFFUSION_ROW` | `DIFFUSION_COLUMN` | `DIFFUSION_2D` | `THRESHOLD`
+- ditherKernel (only for DIFFUSION): `FLOYD_STEINBERG` | `ATKINSON` | `BURKES` | `SIERRA2` | `STUCKI` | `JARVIS_JUDICE_NINKE` | `DIFFUSION_ROW` | `DIFFUSION_COLUMN` | `DIFFUSION_2D` | `THRESHOLD`
 
 Quick guidance:
 
-- `DIFFUSION` (`FLOYD_STEINBERG` default) - balanced detail and smooth gradients; great general-purpose choice.
-- `ORDERED` + `THRESHOLD` - ordered halftone; stable pattern; may show a grid in smooth gradients.
-- Kernels like `ATKINSON` (crisp micro-detail), `STUCKI` (sharper, grainier), `JARVIS_JUDICE_NINKE` (very smooth), `SIERRA2` (balanced) tune diffusion behavior.
+- `DIFFUSION` with various kernels - error diffusion creates natural gradients. Default kernel is `FLOYD_STEINBERG` (balanced). Other kernels like `ATKINSON` (crisp), `STUCKI` (sharp), `JARVIS_JUDICE_NINKE` (smooth) offer different visual characteristics.
+- `ORDERED` - fixed halftone pattern; may show grid artifacts in gradients. Kernel parameter has no effect.
+- `NONE` - no dithering; recommended for text-based images. Kernel parameter has no effect.
 
 Example with border:
 

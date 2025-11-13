@@ -34,7 +34,7 @@ func main() {
 		err = fmt.Errorf("unknown command %q", os.Args[1])
 	}
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "quote0: %v\n", err)
+		fmt.Fprintf(os.Stderr, "q0: %v\n", err)
 		os.Exit(1)
 	}
 }
@@ -43,9 +43,10 @@ func runText(args []string) error {
 	fs := flag.NewFlagSet("text", flag.ContinueOnError)
 	token := fs.String("token", os.Getenv("QUOTE0_TOKEN"), "API token; or set QUOTE0_TOKEN")
 	device := fs.String("device", os.Getenv("QUOTE0_DEVICE"), "Device serial; or set QUOTE0_DEVICE")
-	title := fs.String("title", "", "Title (required)")
-	message := fs.String("message", "", "Message (required)")
-	signature := fs.String("signature", "", "Optional signature (defaults to timestamp if empty)")
+	title := fs.String("title", "", "Title (optional)")
+	message := fs.String("message", "", "Message (optional)")
+	signature := fs.String("signature", "", "Signature (optional; defaults to hostname@MM-DD HH:MM:SS if empty)")
+	useDefaultSig := fs.Bool("auto-signature", false, "Use auto-generated signature if -signature is empty")
 	icon := fs.String("icon", "", "Base64 40x40 PNG icon (optional)")
 	iconFile := fs.String("icon-file", "", "Path to 40x40 PNG icon (optional)")
 	link := fs.String("link", "", "Optional URL")
@@ -59,9 +60,7 @@ func runText(args []string) error {
 	if strings.TrimSpace(*device) == "" {
 		return errors.New("missing device serial (use -device or QUOTE0_DEVICE)")
 	}
-	if strings.TrimSpace(*title) == "" || strings.TrimSpace(*message) == "" {
-		return errors.New("-title and -message are required")
-	}
+
 	iconData, err := loadBase64(*icon, *iconFile, "icon")
 	if err != nil {
 		return err
@@ -72,9 +71,18 @@ func runText(args []string) error {
 		return err
 	}
 
+	// Generate default signature if requested and signature is empty
 	sig := strings.TrimSpace(*signature)
-	if sig == "" {
-		sig = time.Now().Format("2006-01-02 15:04:05 MST")
+	if sig == "" && *useDefaultSig {
+		hostname, _ := os.Hostname()
+		if hostname == "" {
+			hostname = "localhost"
+		}
+		now := time.Now()
+		sig = fmt.Sprintf("%s@%02d-%02d %02d:%02d:%02d",
+			hostname,
+			now.Month(), now.Day(),
+			now.Hour(), now.Minute(), now.Second())
 	}
 
 	req := quote0.TextRequest{
@@ -100,7 +108,7 @@ func runImage(args []string) error {
 	image := fs.String("image", "", "Base64 296x152 PNG")
 	imageFile := fs.String("image-file", "", "Path to 296x152 PNG (base64 encoded internally)")
 	link := fs.String("link", "", "Optional URL")
-	border := fs.Int("border", 0, "Border width in pixels (optional)")
+	border := fs.Int("border", 0, "Screen edge color: 0=white (default), 1=black")
 	ditherType := fs.String("dither-type", "", "Dither type (NONE|DIFFUSION|ORDERED)")
 	ditherKernel := fs.String("dither-kernel", "", "Dither kernel (FLOYD_STEINBERG, ATKINSON, ...)")
 	refresh := fs.Bool("refresh", true, "Set refreshNow=true")
@@ -131,8 +139,8 @@ func runImage(args []string) error {
 		RefreshNow:   quote0.Bool(*refresh),
 		Link:         *link,
 		Border:       quote0.BorderColor(*border),
-		DitherType:   quote0.DitherType(strings.ToUpper(*ditherType)),
-		DitherKernel: quote0.DitherKernel(strings.ToUpper(*ditherKernel)),
+		DitherType:   quote0.DitherType(strings.ToUpper(strings.TrimSpace(*ditherType))),
+		DitherKernel: quote0.DitherKernel(strings.ToUpper(strings.TrimSpace(*ditherKernel))),
 	}
 	if strings.TrimSpace(*image) != "" {
 		req.Image = *image
@@ -178,23 +186,30 @@ Common flags:
   -device      Device serial (or set QUOTE0_DEVICE)
 
 Text flags:
-  -title       Title (required)
-  -message     Message (required)
-  -signature   Signature (optional; defaults to now)
-  -icon        Base64 icon (optional)
-  -icon-file   Path to icon PNG (optional)
-  -link        URL (optional)
-  -refresh     true|false (default true)
+  -title          Title displayed on the first line (optional)
+  -message        Message displayed on the next three lines (optional)
+  -signature      Signature displayed at bottom-right corner (optional)
+  -auto-signature Use auto-generated signature (hostname@MM-DD HH:MM:SS) if -signature is empty
+  -icon           Base64 40x40 PNG icon displayed at bottom-left corner (optional)
+  -icon-file      Path to 40x40 PNG icon (optional)
+  -link           URL (optional)
+  -refresh        true|false (default true)
 
 Image flags:
-  -image       Base64 296x152 PNG
-  -image-file  Path to 296x152 PNG (SDK encodes base64 internally)
-  -border      Screen edge color: 0=white (default), 1=black
-  -dither-type NONE|DIFFUSION|ORDERED (default if omitted: DIFFUSION)
+  -image         Base64 296x152 PNG
+  -image-file    Path to 296x152 PNG (SDK encodes base64 internally)
+  -border        Screen edge color: 0=white (default), 1=black
+  -dither-type   NONE|DIFFUSION|ORDERED (default if omitted: DIFFUSION with FLOYD_STEINBERG)
   -dither-kernel FLOYD_STEINBERG|ATKINSON|BURKES|SIERRA2|STUCKI|JARVIS_JUDICE_NINKE|DIFFUSION_ROW|DIFFUSION_COLUMN|DIFFUSION_2D|THRESHOLD
+  -link          URL (optional)
+  -refresh       true|false (default true)
 
 Notes:
+  - Text layout is fixed (296x152px): title on first line, message on next 3 lines, icon at bottom-left, signature at bottom-right.
+    Omitted fields leave blank areas; the layout does not reflow.
   - ditherType and ditherKernel are case-insensitive (values are upper-cased internally).
   - If ditherType is omitted, the server uses error diffusion with the Floyd-Steinberg kernel by default.
+  - ditherKernel is only effective when ditherType is DIFFUSION. For ORDERED or NONE, the kernel parameter is ignored.
+  - All Text fields except device are optional. You can send an empty text request to just refresh the display.
 `)
 }
