@@ -368,6 +368,9 @@ func TestDefaultUserAgent(t *testing.T) {
 		t.Fatalf("SendText failed: %v", err)
 	}
 
+	// Log the actual User-Agent received
+	t.Logf("Received User-Agent: %s", receivedUA)
+
 	// Verify default User-Agent was used
 	if !strings.Contains(receivedUA, "quote0-go-sdk/1.0") {
 		t.Errorf("Expected default SDK user agent containing 'quote0-go-sdk/1.0', got: %s", receivedUA)
@@ -428,6 +431,9 @@ func TestAllWithOptionsNil(t *testing.T) {
 		t.Fatalf("SendText should work with empty UA: %v", err)
 	}
 
+	// Log the actual User-Agent received
+	t.Logf("Test 1 - Empty UA: Received User-Agent: '%s'", receivedUAs[0])
+
 	// When UA is explicitly set to empty string, it sends an empty User-Agent
 	// (not Go's default "Go-http-client/1.1")
 	if len(receivedUAs) != 1 || receivedUAs[0] != "" {
@@ -452,6 +458,9 @@ func TestAllWithOptionsNil(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SendText failed: %v", err)
 	}
+
+	// Log the actual User-Agent received
+	t.Logf("Test 2 - Default UA: Received User-Agent: %s", receivedUAs[0])
 
 	// Should use SDK default UA, not Go's default
 	if len(receivedUAs) != 1 {
