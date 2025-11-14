@@ -51,6 +51,7 @@ func runText(args []string) error {
 	iconFile := fs.String("icon-file", "", "Path to 40x40 PNG icon (optional)")
 	link := fs.String("link", "", "Optional URL")
 	refresh := fs.Bool("refresh", true, "Set refreshNow=true")
+	debug := fs.Bool("debug", false, "Enable debug mode (logs request/response to stderr)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func runText(args []string) error {
 		return err
 	}
 
-	client, err := quote0.NewClient(*token, quote0.WithDefaultDeviceID(*device))
+	client, err := quote0.NewClient(*token, quote0.WithDefaultDeviceID(*device), quote0.WithDebug(*debug))
 	if err != nil {
 		return err
 	}
@@ -74,15 +75,7 @@ func runText(args []string) error {
 	// Generate default signature if requested and signature is empty
 	sig := strings.TrimSpace(*signature)
 	if sig == "" && *useDefaultSig {
-		hostname, _ := os.Hostname()
-		if hostname == "" {
-			hostname = "localhost"
-		}
-		now := time.Now()
-		sig = fmt.Sprintf("%s@%02d-%02d %02d:%02d:%02d",
-			hostname,
-			now.Month(), now.Day(),
-			now.Hour(), now.Minute(), now.Second())
+		sig = time.Now().Format("2006-01-02 15:04:05")
 	}
 
 	req := quote0.TextRequest{
@@ -112,6 +105,7 @@ func runImage(args []string) error {
 	ditherType := fs.String("dither-type", "", "Dither type (NONE|DIFFUSION|ORDERED)")
 	ditherKernel := fs.String("dither-kernel", "", "Dither kernel (FLOYD_STEINBERG, ATKINSON, ...)")
 	refresh := fs.Bool("refresh", true, "Set refreshNow=true")
+	debug := fs.Bool("debug", false, "Enable debug mode (logs request/response to stderr)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -130,7 +124,7 @@ func runImage(args []string) error {
 		return errors.New("provide -image or -image-file")
 	}
 
-	client, err := quote0.NewClient(*token, quote0.WithDefaultDeviceID(*device))
+	client, err := quote0.NewClient(*token, quote0.WithDefaultDeviceID(*device), quote0.WithDebug(*debug))
 	if err != nil {
 		return err
 	}
@@ -184,12 +178,13 @@ Usage:
 Common flags:
   -token       API token (or set QUOTE0_TOKEN)
   -device      Device serial (or set QUOTE0_DEVICE)
+  -debug       Enable debug mode (logs request/response details to stderr)
 
 Text flags:
   -title          Title displayed on the first line (optional)
   -message        Message displayed on the next three lines (optional)
   -signature      Signature displayed at bottom-right corner (optional)
-  -auto-signature Use auto-generated signature (hostname@MM-DD HH:MM:SS) if -signature is empty
+  -auto-signature Use auto-generated signature (YYYY-MM-DD HH:MM:SS) if -signature is empty
   -icon           Base64 40x40 PNG icon displayed at bottom-left corner (optional)
   -icon-file      Path to 40x40 PNG icon (optional)
   -link           URL (optional)
@@ -199,8 +194,11 @@ Image flags:
   -image         Base64 296x152 PNG
   -image-file    Path to 296x152 PNG (SDK encodes base64 internally)
   -border        Screen edge color: 0=white (default), 1=black
-  -dither-type   NONE|DIFFUSION|ORDERED (default if omitted: DIFFUSION with FLOYD_STEINBERG)
-  -dither-kernel FLOYD_STEINBERG|ATKINSON|BURKES|SIERRA2|STUCKI|JARVIS_JUDICE_NINKE|DIFFUSION_ROW|DIFFUSION_COLUMN|DIFFUSION_2D|THRESHOLD
+  -dither-type   NONE|DIFFUSION|ORDERED (default: DIFFUSION with FLOYD_STEINBERG)
+  -dither-kernel Kernel for DIFFUSION type. Options:
+                 FLOYD_STEINBERG (default), ATKINSON, BURKES, SIERRA2, STUCKI,
+                 JARVIS_JUDICE_NINKE, DIFFUSION_ROW, DIFFUSION_COLUMN,
+                 DIFFUSION_2D, THRESHOLD
   -link          URL (optional)
   -refresh       true|false (default true)
 

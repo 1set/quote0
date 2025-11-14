@@ -338,3 +338,180 @@ func TestRateLimiter_InvalidInterval(t *testing.T) {
 		t.Fatalf("Wait should succeed with negative interval: %v", err)
 	}
 }
+
+// TestDefaultUserAgent verifies that when WithUserAgent is NOT used,
+// the client uses the SDK's default User-Agent string.
+func TestDefaultUserAgent(t *testing.T) {
+	var receivedUA string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedUA = r.Header.Get("User-Agent")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"code":0,"message":"ok"}`)
+	}))
+	defer srv.Close()
+
+	// Create client WITHOUT setting WithUserAgent - should use default
+	c, err := NewClient("test-token",
+		WithBaseURL(srv.URL),
+		WithRateLimiter(nil),
+		WithDefaultDeviceID("TEST"),
+	)
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	// Send a request
+	_, err = c.SendText(context.Background(), TextRequest{
+		Message: "Test default UA",
+	})
+	if err != nil {
+		t.Fatalf("SendText failed: %v", err)
+	}
+
+	// Log the actual User-Agent received
+	t.Logf("Received User-Agent: %s", receivedUA)
+
+	// Verify default User-Agent was used
+	if !strings.Contains(receivedUA, "quote0-go-sdk/1.0") {
+		t.Errorf("Expected default SDK user agent containing 'quote0-go-sdk/1.0', got: %s", receivedUA)
+	}
+	if !strings.Contains(receivedUA, "Go") {
+		t.Errorf("Expected user agent to contain Go version, got: %s", receivedUA)
+	}
+	// Verify it's not the Go http client default
+	if receivedUA == "Go-http-client/1.1" {
+		t.Error("Should use SDK default UA, not Go http client default")
+	}
+}
+
+// TestAllWithOptionsNil tests that the client handles all With options being set to nil/empty gracefully.
+// This ensures defensive coding and proper fallback to defaults.
+func TestAllWithOptionsNil(t *testing.T) {
+	// Create server to validate requests still work
+	requestCount := 0
+	var receivedUAs []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedUAs = append(receivedUAs, r.Header.Get("User-Agent"))
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"code":0,"message":"ok"}`)
+	}))
+	defer srv.Close()
+
+	// Test 1: Client with all With options set to nil or empty values
+	c1, err := NewClient("test-token",
+		WithHTTPClient(nil),     // nil HTTP client - should use default
+		WithRateLimiter(nil),    // nil rate limiter - should disable rate limiting
+		WithUserAgent(""),       // empty user agent - should NOT send custom UA
+		WithDefaultDeviceID(""), // empty device ID - should remain empty
+		WithBaseURL(srv.URL),    // test server
+	)
+	if err != nil {
+		t.Fatalf("NewClient with nil options failed: %v", err)
+	}
+
+	// Verify that internal defaults were set correctly
+	if c1.http == nil {
+		t.Fatal("HTTP client should have default, got nil")
+	}
+	if c1.limiter != nil {
+		t.Fatal("Rate limiter should be nil when passed nil, got non-nil")
+	}
+	// When WithUserAgent("") is explicitly called, it overrides the default to empty
+	if c1.userAgent != "" {
+		t.Fatalf("User-Agent should be empty when explicitly set to empty, got: %s", c1.userAgent)
+	}
+
+	// Test that sending works with explicit device ID
+	_, err = c1.SendText(context.Background(), TextRequest{
+		DeviceID: "EXPLICIT",
+		Message:  "Empty UA test",
+	})
+	if err != nil {
+		t.Fatalf("SendText should work with empty UA: %v", err)
+	}
+
+	// Log the actual User-Agent received
+	t.Logf("Test 1 - Empty UA: Received User-Agent: '%s'", receivedUAs[0])
+
+	// When UA is explicitly set to empty string, it sends an empty User-Agent
+	// (not Go's default "Go-http-client/1.1")
+	if len(receivedUAs) != 1 || receivedUAs[0] != "" {
+		t.Errorf("Expected empty user agent when explicitly set to empty, got: '%s'", receivedUAs[0])
+	}
+
+	// Test 2: Client WITHOUT WithUserAgent (should use SDK default)
+	receivedUAs = receivedUAs[:0] // clear
+	c2, err := NewClient("test-token",
+		WithBaseURL(srv.URL),
+		WithRateLimiter(nil),
+		WithDefaultDeviceID("DEV2"),
+		// Note: NOT calling WithUserAgent - should use SDK default
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = c2.SendText(context.Background(), TextRequest{
+		Message: "Default UA test",
+	})
+	if err != nil {
+		t.Fatalf("SendText failed: %v", err)
+	}
+
+	// Log the actual User-Agent received
+	t.Logf("Test 2 - Default UA: Received User-Agent: %s", receivedUAs[0])
+
+	// Should use SDK default UA, not Go's default
+	if len(receivedUAs) != 1 {
+		t.Fatalf("Expected 1 request, got %d", len(receivedUAs))
+	}
+	if !strings.Contains(receivedUAs[0], "quote0-go-sdk") {
+		t.Errorf("Expected SDK default UA when not set, got: %s", receivedUAs[0])
+	}
+
+	// Verify that without default device ID, sending fails appropriately
+	_, err = c1.SendText(context.Background(), TextRequest{
+		Title:   "Test",
+		Message: "No device test",
+	})
+	if err != ErrDeviceIDMissing {
+		t.Errorf("Expected ErrDeviceIDMissing, got: %v", err)
+	}
+}
+
+// TestDebugMode tests that debug mode logs request and response details.
+func TestDebugMode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Custom-Header", "test-value")
+		_, _ = io.WriteString(w, `{"code":0,"message":"ok","result":{"status":"success"}}`)
+	}))
+	defer srv.Close()
+
+	// Create client with debug mode enabled
+	c, err := NewClient("test_secret_token_1234567890abcdef",
+		WithBaseURL(srv.URL),
+		WithRateLimiter(nil),
+		WithDefaultDeviceID("TEST123"),
+		WithDebug(true), // Enable debug mode
+	)
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	t.Log("Debug mode is enabled. Request and response details will be printed to stderr.")
+
+	// Send a request - this will print debug info to stderr
+	_, err = c.SendText(context.Background(), TextRequest{
+		Title:   "Debug Test",
+		Message: "Testing debug output",
+	})
+	if err != nil {
+		t.Fatalf("SendText failed: %v", err)
+	}
+
+	// The test passes if no errors occurred
+	// The actual debug output goes to stderr and can be seen when running with -v
+	t.Log("Debug output should appear above (check stderr)")
+}

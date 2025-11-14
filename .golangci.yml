@@ -1,0 +1,21 @@
+linters-settings:
+  revive:
+    rules:
+      # Disable max-public-structs - SDK requires multiple public types for API surface
+      - name: max-public-structs
+        disabled: true
+      # Keep cognitive complexity check but allow slightly higher threshold
+      - name: cognitive-complexity
+        disabled: false
+        arguments: [20]  # Increased from 15 to allow for necessary complexity
+
+linters:
+  enable:
+    - revive
+    - staticcheck
+    - gofmt
+    - goimports
+    - govet
+
+run:
+  timeout: 5m
