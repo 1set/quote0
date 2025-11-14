@@ -51,6 +51,7 @@ func runText(args []string) error {
 	iconFile := fs.String("icon-file", "", "Path to 40x40 PNG icon (optional)")
 	link := fs.String("link", "", "Optional URL")
 	refresh := fs.Bool("refresh", true, "Set refreshNow=true")
+	debug := fs.Bool("debug", false, "Enable debug mode (logs request/response to stderr)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -66,7 +67,7 @@ func runText(args []string) error {
 		return err
 	}
 
-	client, err := quote0.NewClient(*token, quote0.WithDefaultDeviceID(*device))
+	client, err := quote0.NewClient(*token, quote0.WithDefaultDeviceID(*device), quote0.WithDebug(*debug))
 	if err != nil {
 		return err
 	}
@@ -104,6 +105,7 @@ func runImage(args []string) error {
 	ditherType := fs.String("dither-type", "", "Dither type (NONE|DIFFUSION|ORDERED)")
 	ditherKernel := fs.String("dither-kernel", "", "Dither kernel (FLOYD_STEINBERG, ATKINSON, ...)")
 	refresh := fs.Bool("refresh", true, "Set refreshNow=true")
+	debug := fs.Bool("debug", false, "Enable debug mode (logs request/response to stderr)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -122,7 +124,7 @@ func runImage(args []string) error {
 		return errors.New("provide -image or -image-file")
 	}
 
-	client, err := quote0.NewClient(*token, quote0.WithDefaultDeviceID(*device))
+	client, err := quote0.NewClient(*token, quote0.WithDefaultDeviceID(*device), quote0.WithDebug(*debug))
 	if err != nil {
 		return err
 	}
@@ -176,6 +178,7 @@ Usage:
 Common flags:
   -token       API token (or set QUOTE0_TOKEN)
   -device      Device serial (or set QUOTE0_DEVICE)
+  -debug       Enable debug mode (logs request/response details to stderr)
 
 Text flags:
   -title          Title displayed on the first line (optional)

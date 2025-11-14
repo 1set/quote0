@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -49,6 +51,7 @@ type Client struct {
 	http      *http.Client
 	limiter   RateLimiter
 	userAgent string
+	debug     bool
 
 	mu            sync.RWMutex
 	defaultDevice string
@@ -104,6 +107,12 @@ func WithRateLimiter(l RateLimiter) ClientOption {
 // If not called, the client uses a default SDK User-Agent.
 func WithUserAgent(ua string) ClientOption {
 	return func(c *Client) { c.userAgent = ua }
+}
+
+// WithDebug enables debug mode which logs request details (method, URL, headers, body) to stderr.
+// Useful for debugging and verifying SDK behavior.
+func WithDebug(debug bool) ClientOption {
+	return func(c *Client) { c.debug = debug }
 }
 
 // WithDefaultDeviceID sets a default device serial number used when request omits deviceId.
@@ -180,6 +189,13 @@ func (c *Client) doJSON(ctx context.Context, endpoint string, payload interface{
 	// If empty, it sends an empty UA instead of Go's default "Go-http-client/1.1".
 	req.Header.Set("User-Agent", c.userAgent)
 
+	// Record start time for debug logging
+	var startTime time.Time
+	if c.debug {
+		startTime = time.Now()
+		c.logRequest(req, body, startTime)
+	}
+
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("quote0: execute request: %w", err)
@@ -190,6 +206,12 @@ func (c *Client) doJSON(ctx context.Context, endpoint string, payload interface{
 	raw, err := io.ReadAll(limited)
 	if err != nil {
 		return nil, fmt.Errorf("quote0: read response: %w", err)
+	}
+
+	// Debug logging: print response details with timing
+	if c.debug {
+		endTime := time.Now()
+		c.logResponse(resp, raw, startTime, endTime)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -219,4 +241,59 @@ func buildDefaultUserAgent() string {
 	}
 	return fmt.Sprintf("%s/%s (+https://github.com/1set/quote0; Go%s; %s/%s)",
 		userAgentProduct, userAgentVersion, goVer, runtime.GOOS, runtime.GOARCH)
+}
+
+// logRequest prints HTTP request details to stderr for debugging.
+func (c *Client) logRequest(req *http.Request, body []byte, startTime time.Time) {
+	logger := log.New(os.Stderr, "[quote0-debug] ", 0)
+	logger.Println("========== REQUEST ==========")
+	logger.Printf("Time: %s", startTime.Format("2006-01-02 15:04:05.000"))
+	logger.Printf("%s %s", req.Method, req.URL.String())
+	logger.Println("Headers:")
+	for key, values := range req.Header {
+		for _, value := range values {
+			// Mask the API key for security
+			if key == "Authorization" && strings.HasPrefix(value, "Bearer ") {
+				token := value[7:]
+				if len(token) > 16 {
+					value = "Bearer " + token[:8] + "..." + token[len(token)-8:]
+				}
+			}
+			logger.Printf("  %s: %s", key, value)
+		}
+	}
+	logger.Println("Body:")
+	// Pretty print JSON
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, body, "  ", "  "); err == nil {
+		logger.Println(prettyJSON.String())
+	} else {
+		logger.Println(string(body))
+	}
+	logger.Println("=============================")
+}
+
+// logResponse prints HTTP response details to stderr for debugging.
+func (c *Client) logResponse(resp *http.Response, body []byte, startTime, endTime time.Time) {
+	logger := log.New(os.Stderr, "[quote0-debug] ", 0)
+	logger.Println("========== RESPONSE ==========")
+	logger.Printf("Time: %s", endTime.Format("2006-01-02 15:04:05.000"))
+	duration := endTime.Sub(startTime)
+	logger.Printf("Duration: %v", duration)
+	logger.Printf("Status: %s (%d)", resp.Status, resp.StatusCode)
+	logger.Println("Headers:")
+	for key, values := range resp.Header {
+		for _, value := range values {
+			logger.Printf("  %s: %s", key, value)
+		}
+	}
+	logger.Println("Body:")
+	// Pretty print JSON if possible
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, body, "  ", "  "); err == nil {
+		logger.Println(prettyJSON.String())
+	} else {
+		logger.Println(string(body))
+	}
+	logger.Println("==============================")
 }

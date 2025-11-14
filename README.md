@@ -83,6 +83,7 @@ Client options:
 - `WithHTTPClient(*http.Client)` - custom HTTP client
 - `WithRateLimiter(RateLimiter)` - custom limiter (nil disables client-side limiting)
 - `WithUserAgent(string)` - custom User-Agent (empty string sends empty UA; omit to use SDK default)
+- `WithDebug(bool)` - enable debug mode to log request/response details to stderr
 
 ### Text API
 
@@ -181,6 +182,16 @@ client, _ := quote0.NewClient(
 )
 ```
 
+### Debug Mode
+
+Enable debug mode to log HTTP request/response details to stderr for troubleshooting:
+
+```go
+client, _ := quote0.NewClient(token, quote0.WithDebug(true))
+```
+
+Logs include timestamps, headers (token masked), body, and elapsed time. CLI also supports `-debug` flag.
+
 ## CLI Usage
 
 Build:
@@ -207,6 +218,14 @@ Send image from file or base64:
 ./quote0 image -token "$QUOTE0_TOKEN" -device "$QUOTE0_DEVICE" -image-file screen.png
 ./quote0 image -token "$QUOTE0_TOKEN" -device "$QUOTE0_DEVICE" -image "<base64>"
 ```
+
+Enable debug mode to see request/response details:
+
+```bash
+./quote0 text -title "Debug" -message "Test" -debug
+```
+
+All commands support `-debug` flag to log HTTP request and response details to stderr for troubleshooting.
 
 ## Notes & Limits
 

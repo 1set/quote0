@@ -487,3 +487,39 @@ func TestAllWithOptionsNil(t *testing.T) {
 		t.Fatalf("SendText should handle nil context: %v", err)
 	}
 }
+
+// TestDebugMode tests that debug mode logs request and response details.
+func TestDebugMode(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Custom-Header", "test-value")
+		_, _ = io.WriteString(w, `{"code":0,"message":"ok","result":{"status":"success"}}`)
+	}))
+	defer srv.Close()
+
+	// Create client with debug mode enabled
+	c, err := NewClient("test_secret_token_1234567890abcdef",
+		WithBaseURL(srv.URL),
+		WithRateLimiter(nil),
+		WithDefaultDeviceID("TEST123"),
+		WithDebug(true), // Enable debug mode
+	)
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
+
+	t.Log("Debug mode is enabled. Request and response details will be printed to stderr.")
+
+	// Send a request - this will print debug info to stderr
+	_, err = c.SendText(context.Background(), TextRequest{
+		Title:   "Debug Test",
+		Message: "Testing debug output",
+	})
+	if err != nil {
+		t.Fatalf("SendText failed: %v", err)
+	}
+
+	// The test passes if no errors occurred
+	// The actual debug output goes to stderr and can be seen when running with -v
+	t.Log("Debug output should appear above (check stderr)")
+}
