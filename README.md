@@ -82,7 +82,7 @@ Client options:
 - `WithBaseURL(baseURL string)` - override host (defaults to `https://dot.mindreset.tech`)
 - `WithHTTPClient(*http.Client)` - custom HTTP client
 - `WithRateLimiter(RateLimiter)` - custom limiter (nil disables client-side limiting)
-- `WithUserAgent(string)` - custom User-Agent
+- `WithUserAgent(string)` - custom User-Agent (empty string sends empty UA; omit to use SDK default)
 
 ### Text API
 

@@ -100,6 +100,8 @@ func WithRateLimiter(l RateLimiter) ClientOption {
 }
 
 // WithUserAgent sets a custom User-Agent string.
+// Pass an empty string to send an empty User-Agent header (not recommended).
+// If not called, the client uses a default SDK User-Agent.
 func WithUserAgent(ua string) ClientOption {
 	return func(c *Client) { c.userAgent = ua }
 }
@@ -174,9 +176,9 @@ func (c *Client) doJSON(ctx context.Context, endpoint string, payload interface{
 	}
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	req.Header.Set("Content-Type", "application/json")
-	if ua := strings.TrimSpace(c.userAgent); ua != "" {
-		req.Header.Set("User-Agent", ua)
-	}
+	// Always set User-Agent, even if empty, to give users full control.
+	// If empty, it sends an empty UA instead of Go's default "Go-http-client/1.1".
+	req.Header.Set("User-Agent", c.userAgent)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
