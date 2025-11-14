@@ -218,20 +218,25 @@ func (c *Client) doJSON(ctx context.Context, endpoint string, payload interface{
 		return nil, buildAPIError(resp.StatusCode, raw)
 	}
 
+	return parseResponse(resp, raw), nil
+}
+
+// parseResponse converts raw HTTP response into APIResponse.
+func parseResponse(resp *http.Response, raw []byte) *APIResponse {
 	out := &APIResponse{StatusCode: resp.StatusCode, RawBody: raw}
 	if len(raw) == 0 {
-		return out, nil
+		return out
 	}
 
 	// Try JSON first based on header; if it fails, fall back to plain text.
 	ct := strings.ToLower(resp.Header.Get("Content-Type"))
 	if strings.Contains(ct, "application/json") {
 		if err := json.Unmarshal(raw, out); err == nil {
-			return out, nil
+			return out
 		}
 	}
 	out.Message = strings.TrimSpace(string(raw))
-	return out, nil
+	return out
 }
 
 func buildDefaultUserAgent() string {
@@ -244,7 +249,7 @@ func buildDefaultUserAgent() string {
 }
 
 // logRequest prints HTTP request details to stderr for debugging.
-func (c *Client) logRequest(req *http.Request, body []byte, startTime time.Time) {
+func (*Client) logRequest(req *http.Request, body []byte, startTime time.Time) {
 	logger := log.New(os.Stderr, "[quote0-debug] ", 0)
 	logger.Println("========== REQUEST ==========")
 	logger.Printf("Time: %s", startTime.Format("2006-01-02 15:04:05.000"))
@@ -274,7 +279,7 @@ func (c *Client) logRequest(req *http.Request, body []byte, startTime time.Time)
 }
 
 // logResponse prints HTTP response details to stderr for debugging.
-func (c *Client) logResponse(resp *http.Response, body []byte, startTime, endTime time.Time) {
+func (*Client) logResponse(resp *http.Response, body []byte, startTime, endTime time.Time) {
 	logger := log.New(os.Stderr, "[quote0-debug] ", 0)
 	logger.Println("========== RESPONSE ==========")
 	logger.Printf("Time: %s", endTime.Format("2006-01-02 15:04:05.000"))

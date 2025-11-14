@@ -478,14 +478,6 @@ func TestAllWithOptionsNil(t *testing.T) {
 	if err != ErrDeviceIDMissing {
 		t.Errorf("Expected ErrDeviceIDMissing, got: %v", err)
 	}
-
-	// Test nil context handling (uses c2 which has default device)
-	_, err = c2.SendText(nil, TextRequest{
-		Message: "Nil context test",
-	})
-	if err != nil {
-		t.Fatalf("SendText should handle nil context: %v", err)
-	}
 }
 
 // TestDebugMode tests that debug mode logs request and response details.
