@@ -18,11 +18,11 @@ const (
 // DitherType enumerates server-accepted dithering modes.
 //
 // Server behavior (per official docs):
-// - If ditherType is omitted, the default is error diffusion using the Floyd-Steinberg kernel.
-// - DIFFUSION: Error diffusion algorithms that distribute quantization errors to neighbors.
-//   When using DIFFUSION, you can specify a DitherKernel to control the error distribution pattern.
-// - ORDERED: Fixed periodic threshold matrix producing uniform dot patterns with regular grids.
-// - NONE: Disables dithering entirely; recommended for text-based images for sharper rendering.
+//   - If ditherType is omitted, the default is error diffusion using the Floyd-Steinberg kernel.
+//   - DIFFUSION: Error diffusion algorithms that distribute quantization errors to neighbors.
+//     When using DIFFUSION, you can specify a DitherKernel to control the error distribution pattern.
+//   - ORDERED: Fixed periodic threshold matrix producing uniform dot patterns with regular grids.
+//   - NONE: Disables dithering entirely; recommended for text-based images for sharper rendering.
 //
 // Note: DitherKernel is only effective when DitherType is DIFFUSION. For ORDERED or NONE,
 // the kernel parameter is ignored by the server.
